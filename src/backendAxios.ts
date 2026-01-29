@@ -1,15 +1,16 @@
-import Axios from 'axios';
+import axios from 'axios';
 
-// Use backend proxy for all Spotify API calls
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
 
-const axios = Axios.create({
-  baseURL: `${API_BASE_URL}/api/spotify`,
-  headers: {},
+const backendAxios = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Add interceptor to include guest token
-axios.interceptors.request.use(
+// Add interceptor to include auth token
+backendAxios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('guest_token');
     if (token) {
@@ -21,7 +22,7 @@ axios.interceptors.request.use(
 );
 
 // Add interceptor to handle auth errors
-axios.interceptors.response.use(
+backendAxios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -34,4 +35,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default axios;
+export default backendAxios;
