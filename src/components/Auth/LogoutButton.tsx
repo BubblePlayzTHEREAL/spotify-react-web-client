@@ -25,7 +25,6 @@ const LogoutButton: React.FC<LogoutButtonProps> = ({ type = 'default', size = 'm
       
       // Redirect to login
       navigate('/login');
-      window.location.reload();
     }
   };
 

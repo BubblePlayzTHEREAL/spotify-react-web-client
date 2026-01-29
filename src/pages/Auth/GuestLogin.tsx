@@ -24,9 +24,8 @@ const GuestLogin: React.FC = () => {
 
       message.success('Login successful!');
 
-      // Redirect to home page
+      // Redirect to home page - app will detect auth and re-render
       navigate('/');
-      window.location.reload(); // Reload to trigger auth check
     } catch (error: any) {
       if (error.response?.status === 429) {
         message.error('Too many login attempts. Please try again later.');

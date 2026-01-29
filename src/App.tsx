@@ -170,7 +170,9 @@ const SpotifyContainer: FC<{ children: any }> = memo(({ children }) => {
 
   if (!user) return <Spinner loading={requesting}>{children}</Spinner>;
 
-  // Skip WebPlayback SDK in guest mode
+  // Note: WebPlayback SDK is not used in the new multi-tier auth system
+  // All playback is handled through the backend API proxy which manages the Spotify tokens
+  // This is a limitation of the shared account model where guests don't have their own tokens
   return <>{children}</>;
 });
 

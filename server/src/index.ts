@@ -27,13 +27,13 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Apply rate limiting to all routes
-app.use(apiRateLimiter);
-
-// Health check
+// Health check (no rate limiting)
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Apply rate limiting to all other routes
+app.use(apiRateLimiter);
 
 // Routes
 app.use('/auth', authRoutes);
@@ -41,7 +41,13 @@ app.use('/api/spotify', spotifyRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: any) => {
-  console.error('Error:', err);
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+  });
   res.status(500).json({ error: 'Internal server error' });
 });
 
