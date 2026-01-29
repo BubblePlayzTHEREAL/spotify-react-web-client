@@ -15,7 +15,7 @@ import { backendAuthService } from './services/backendAuth';
 import { Provider } from 'react-redux';
 import { uiActions } from './store/slices/ui';
 import { PersistGate } from 'redux-persist/integration/react';
-import { authActions, loginToSpotify } from './store/slices/auth';
+import { authActions } from './store/slices/auth';
 import { persistor, store, useAppDispatch, useAppSelector } from './store/store';
 
 // Spotify
