@@ -3,19 +3,19 @@ import './styles/App.scss';
 
 // Utils
 import i18next from 'i18next';
-import { FC, Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { getFromLocalStorageWithExpiry } from './utils/localstorage';
 
 // Components
 import { ConfigProvider } from 'antd';
 import { AppLayout } from './components/Layout';
-import { Route, BrowserRouter as Router, Routes, useLocation, Navigate } from 'react-router-dom';
-import { backendAuthService } from './services/backendAuth';
+import { Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 
 // Redux
 import { Provider } from 'react-redux';
 import { uiActions } from './store/slices/ui';
 import { PersistGate } from 'redux-persist/integration/react';
-import { authActions } from './store/slices/auth';
+import { authActions, loginToSpotify } from './store/slices/auth';
 import { persistor, store, useAppDispatch, useAppSelector } from './store/store';
 
 // Spotify
@@ -48,83 +48,11 @@ const SearchPlaylist = lazy(() => import('./pages/Search/Playlists'));
 const SearchPageArtists = lazy(() => import('./pages/Search/Artists'));
 const RecentlySearched = lazy(() => import('./pages/Search/RecentlySearched'));
 
-// Auth pages
-const AdminSetup = lazy(() => import('./pages/Auth/AdminSetup'));
-const GuestLogin = lazy(() => import('./pages/Auth/GuestLogin'));
-
 window.addEventListener('resize', () => {
   const vh = window.innerWidth;
   if (vh < 950) {
     store.dispatch(uiActions.collapseLibrary());
   }
-});
-
-// Check if user has valid guest token
-function isGuestAuthenticated(): boolean {
-  const token = localStorage.getItem('guest_token');
-  const expiresAt = localStorage.getItem('token_expires_at');
-
-  if (!token || !expiresAt) {
-    return false;
-  }
-
-  // Check if token is expired
-  const expiryDate = new Date(expiresAt);
-  if (expiryDate < new Date()) {
-    localStorage.removeItem('guest_token');
-    localStorage.removeItem('token_expires_at');
-    return false;
-  }
-
-  return true;
-}
-
-const AuthGate: FC<{ children: any }> = memo(({ children }) => {
-  const [setupComplete, setSetupComplete] = useState<boolean | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      // Check if setup is complete
-      const response = await backendAuthService.checkSetupStatus();
-      const { setupComplete } = response.data;
-
-      setSetupComplete(setupComplete);
-
-      if (setupComplete) {
-        // Check if user is authenticated
-        const authenticated = isGuestAuthenticated();
-        setIsAuthenticated(authenticated);
-      }
-    } catch (error) {
-      console.error('Failed to check auth status:', error);
-      setSetupComplete(false);
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  if (checking) {
-    return <Spinner loading={true}>{children}</Spinner>;
-  }
-
-  // If setup is not complete, redirect to admin setup
-  if (setupComplete === false) {
-    return <Navigate to='/admin-setup' replace />;
-  }
-
-  // If setup is complete but user is not authenticated, redirect to login
-  if (setupComplete && !isAuthenticated) {
-    return <Navigate to='/login' replace />;
-  }
-
-  // User is authenticated, render children
-  return <>{children}</>;
 });
 
 const SpotifyContainer: FC<{ children: any }> = memo(({ children }) => {
@@ -135,11 +63,13 @@ const SpotifyContainer: FC<{ children: any }> = memo(({ children }) => {
   const requesting = useAppSelector((state) => state.auth.requesting);
 
   useEffect(() => {
-    // For backend mode, use guest token
-    const guestToken = localStorage.getItem('guest_token');
-    if (guestToken) {
-      dispatch(authActions.setToken({ token: 'dummy-token-for-sdk' }));
+    const tokenInLocalStorage = getFromLocalStorageWithExpiry('access_token');
+    dispatch(authActions.setToken({ token: tokenInLocalStorage }));
+
+    if (tokenInLocalStorage) {
       dispatch(authActions.fetchUser());
+    } else {
+      dispatch(loginToSpotify());
     }
   }, [dispatch]);
 
@@ -149,17 +79,13 @@ const SpotifyContainer: FC<{ children: any }> = memo(({ children }) => {
       playerInitialVolume: 1.0,
       playerRefreshRateMs: 1000,
       playerName: 'Spotify React Player',
-      onPlayerRequestAccessToken: () => {
-        // SDK playback won't work in guest mode
-        // Return dummy token to prevent errors
-        return Promise.resolve('dummy-token');
-      },
+      onPlayerRequestAccessToken: () => Promise.resolve(token!),
       onPlayerLoading: () => {},
       onPlayerWaitingForDevice: () => {
         dispatch(authActions.setPlayerLoaded({ playerLoaded: true }));
       },
       onPlayerError: (e) => {
-        console.log('Player error (expected in guest mode):', e);
+        dispatch(loginToSpotify());
       },
       onPlayerDeviceSelected: () => {
         dispatch(authActions.setPlayerLoaded({ playerLoaded: true }));
@@ -170,10 +96,7 @@ const SpotifyContainer: FC<{ children: any }> = memo(({ children }) => {
 
   if (!user) return <Spinner loading={requesting}>{children}</Spinner>;
 
-  // Note: WebPlayback SDK is not used in the new multi-tier auth system
-  // All playback is handled through the backend API proxy which manages the Spotify tokens
-  // This is a limitation of the shared account model where guests don't have their own tokens
-  return <>{children}</>;
+  return <WebPlayback {...webPlaybackSdkProps}>{children}</WebPlayback>;
 });
 
 const RoutesComponent = memo(() => {
@@ -326,37 +249,9 @@ const RootComponent = () => {
 
   return (
     <Router>
-      <Routes>
-        {/* Public auth routes */}
-        <Route
-          path='/admin-setup'
-          element={
-            <Suspense>
-              <AdminSetup />
-            </Suspense>
-          }
-        />
-        <Route
-          path='/login'
-          element={
-            <Suspense>
-              <GuestLogin />
-            </Suspense>
-          }
-        />
-
-        {/* Protected routes */}
-        <Route
-          path='/*'
-          element={
-            <AuthGate>
-              <AppLayout>
-                <RoutesComponent />
-              </AppLayout>
-            </AuthGate>
-          }
-        />
-      </Routes>
+      <AppLayout>
+        <RoutesComponent />
+      </AppLayout>
     </Router>
   );
 };

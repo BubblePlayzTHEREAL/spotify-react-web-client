@@ -77,12 +77,20 @@ More in images [folder](https://github.com/francoborrelli/spotify-react-web-clie
 
 ## ⚙️ Installation & Setup
 
-To run this project locally, follow these steps:
+This project now includes a **multi-tier authentication system** where a server owner authenticates with Spotify and sets a password, then shares access with guests who only need the password.
+
+### Prerequisites
+
+- Node.js (v16 or higher)
+- A Spotify Premium account (required for playback features)
+- Spotify Developer account
+
+### Setup Instructions
 
 1. Clone this repository:
 
    ```bash
-   clone https://github.com/francoborrelli/spotify-react-web-client.git
+   git clone https://github.com/francoborrelli/spotify-react-web-client.git
    ```
 
 2. Navigate to the project directory:
@@ -91,26 +99,120 @@ To run this project locally, follow these steps:
    cd spotify-react-web-client
    ```
 
-3. Install dependencies:
+3. Install frontend dependencies:
 
    ```bash
-   yarn install
+   npm install --legacy-peer-deps
    ```
 
-4. Set up your Spotify Developer account and create a [new app](https://developer.spotify.com/dashboard/applications) to obtain your **Client ID** and **Redirect URI**. Add these to an `.env` file in the root of your project:
-
-   ```
-   REACT_APP_SPOTIFY_CLIENT_ID=<your id>
-   REACT_APP_SPOTIFY_REDIRECT_URL=<your redirect uri>
-   ```
-
-5. Start the development server:
+4. Install backend server dependencies:
 
    ```bash
-   yarn start
+   cd server
+   npm install
+   cd ..
    ```
 
-6. Open your browser and navigate to `http://127.0.0.1:3000`.
+5. Set up your Spotify Developer account:
+   
+   - Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications)
+   - Create a new app
+   - Note your **Client ID** and **Client Secret**
+   - Add these redirect URIs in your app settings:
+     - `http://localhost:3001/auth/callback` (for backend OAuth)
+     - `http://localhost:3000/admin-setup` (for frontend redirect)
+
+6. Configure the backend server:
+   
+   Create a `.env` file in the `server/` directory:
+   
+   ```env
+   PORT=3001
+   NODE_ENV=development
+   
+   # Spotify OAuth Configuration
+   SPOTIFY_CLIENT_ID=your_spotify_client_id
+   SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+   SPOTIFY_REDIRECT_URI=http://localhost:3001/auth/callback
+   
+   # Frontend URL
+   FRONTEND_URL=http://localhost:3000
+   
+   # JWT Secret for session tokens
+   JWT_SECRET=your_random_jwt_secret_change_this_in_production
+   
+   # Database
+   DB_PATH=./data/auth.db
+   ```
+
+7. Configure the frontend:
+   
+   Create a `.env` file in the root directory:
+   
+   ```env
+   REACT_APP_API_BASE_URL=http://localhost:3001
+   ```
+
+8. Start the backend server:
+
+   ```bash
+   cd server
+   npm run dev
+   ```
+
+9. In a new terminal, start the frontend development server:
+
+   ```bash
+   npm start
+   ```
+
+10. Open your browser and navigate to `http://localhost:3000`
+
+### Initial Setup (Admin/Server Owner)
+
+1. When you first visit the app, you'll be redirected to the Admin Setup page
+2. Click "Connect with Spotify" to authenticate with your Spotify account
+3. After successful authentication, set a site password (min 8 characters)
+4. Complete the setup - your Spotify tokens are now stored securely on the server
+
+### Guest Access
+
+1. After admin setup is complete, guests can visit the app
+2. Enter the password set by the admin to gain access
+3. Guests will use the admin's Spotify account without needing their own Spotify authentication
+4. Guest sessions are valid for 7 days
+
+### Security Features
+
+- 🔒 **Password Hashing**: Site passwords are hashed with bcrypt
+- 🔑 **JWT Tokens**: Secure session tokens for guest authentication
+- 🚫 **Rate Limiting**: Protection against brute force attacks (5 attempts per 15 minutes)
+- 🔄 **Automatic Token Refresh**: Spotify tokens are refreshed automatically
+- 📊 **SQLite Database**: Secure local storage for credentials
+
+### Changing the Site Password
+
+To change the site password, use the backend API:
+
+```bash
+curl -X POST http://localhost:3001/auth/password/change \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "old_password",
+    "newPassword": "new_password"
+  }'
+```
+
+### Production Deployment
+
+For production deployment:
+
+1. Set `NODE_ENV=production` in the server `.env`
+2. Generate a strong JWT secret
+3. Use a reverse proxy (nginx) with HTTPS
+4. Set appropriate CORS origins
+5. Use environment variables for all secrets
+6. Consider using a more robust database (PostgreSQL, MySQL)
 
 ## 🌐 2018 Version
 
