@@ -214,6 +214,34 @@ For production deployment:
 5. Use environment variables for all secrets
 6. Consider using a more robust database (PostgreSQL, MySQL)
 
+## 📱 Termux (Android) Setup
+
+The server can be installed and run on Android devices using Termux, a powerful terminal emulator. The application has been optimized for Termux compatibility with pure JavaScript alternatives for native modules.
+
+### Quick Start for Termux
+
+1. Install required packages:
+   ```bash
+   pkg update && pkg upgrade
+   pkg install nodejs git python build-essential
+   ```
+
+2. Clone and install:
+   ```bash
+   git clone https://github.com/BubblePlayzTHEREAL/spotify-react-web-client.git
+   cd spotify-react-web-client/server
+   npm install
+   ```
+
+3. Configure your `.env` file (see main setup instructions above)
+
+4. Run the server:
+   ```bash
+   npm run dev
+   ```
+
+For detailed Termux-specific instructions, troubleshooting, and performance tips, see [TERMUX_SETUP.md](TERMUX_SETUP.md).
+
 ## 🌐 2018 Version
 
 There is also a 2018 version of this Spotify clone, which features the Spotify UI from that year. You can find the code for that version in the [`main-2018`](https://github.com/francoborrelli/spotify-react-web-client/tree/main-2018) branch.
